@@ -21922,6 +21922,67 @@ return!1},null,null,20);if(e.config.autoUpdateElementJquery&&b.is("textarea")&&a
 return!0}return g.call(b,d)});if(i.length){var b=new a.Deferred;a.when.apply(this,i).done(function(){b.resolveWith(k)});return b.promise()}return f}var f=a(this).eq(0),c=f.data("ckeditorInstance");return f.is("textarea")&&c?c.getData():g.call(f)}})))})(window.jQuery);
 define("jqueryAdapter", function(){});
 
+/**
+ * This file is part of Husky frontend development framework.
+ *
+ * (c) MASSIVE ART WebServices GmbH
+ *
+ * This source file is subject to the MIT license that is bundled
+ * with this source code in the file LICENSE.
+ *
+ * @module husky/components/ckeditor
+ */
+
+define('pasteFromWordPlugin',[],function() {
+
+    'use strict';
+
+    var addText = function(editor, content) {
+        var element = editor.document.createElement('p');
+        element.setHtml(content);
+        editor.insertElement(element);
+    };
+
+    return function(sandbox) {
+        return {
+            init: function(editor) {
+                editor.addCommand('pasteFromWordDialog', {
+                    dialogName: 'pasteFromWordDialog',
+                    exec: function() {
+                        var $element = $('<div/>');
+                        $('body').append($element);
+
+                        sandbox.start([
+                            {
+                                name: 'ckeditor/plugins/paste-from-word@husky',
+                                options: {
+                                    el: $element,
+                                    title: editor.lang.pastefromword.title,
+                                    info: editor.lang.clipboard.copyError,
+                                    message: editor.lang.clipboard.pasteMsg,
+                                    saveCallback: function(content) {
+                                        sandbox.stop($element);
+                                        addText(editor, content);
+                                    }
+                                }
+                            }
+                        ]);
+                    }
+                });
+
+                editor.ui.addButton(
+                    'PasteFromWord',
+                    {
+                        label: editor.lang.pastefromword.toolbar,
+                        command: 'pasteFromWordDialog',
+                        toolbar: 'clipboard,50'
+                    }
+                );
+            }
+        };
+    };
+});
+
 ;(function(root, factory) {
   if (typeof define === 'function' && define.amd) {
     define('html.sortable',['jquery'], factory);
@@ -47018,7 +47079,8 @@ define('__component__$url-input@husky',['services/husky/url-validator'], functio
     require.config({
         paths: {
             ckeditor: 'bower_components/ckeditor/ckeditor',
-            jqueryAdapter: 'bower_components/ckeditor/adapters/jquery'
+            jqueryAdapter: 'bower_components/ckeditor/adapters/jquery',
+            pasteFromWordPlugin: 'husky_components/ckeditor/plugins/paste-from-word/plugin'
         },
         shim: {
             jqueryAdapter: {
@@ -47027,7 +47089,13 @@ define('__component__$url-input@husky',['services/husky/url-validator'], functio
         }
     });
 
-    define('husky_extensions/ckeditor-extension',['underscore', 'services/husky/util', 'ckeditor', 'jqueryAdapter'], function(_, Util) {
+    define('husky_extensions/ckeditor-extension',[
+        'underscore',
+        'services/husky/util',
+        'pasteFromWordPlugin',
+        'ckeditor',
+        'jqueryAdapter'
+    ], function(_, Util, PasteFromWordPlugin) {
 
         var getConfig = function() {
             return {
@@ -47115,13 +47183,12 @@ define('__component__$url-input@husky',['services/husky/url-validator'], functio
                         basicstyles: ['Superscript', 'Subscript', 'Italic', 'Bold', 'Underline', 'Strike'],
                         blockstyles: ['JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock'],
                         list: ['NumberedList', 'BulletedList'],
-                        paste: ['PasteFromWord'],
                         links: ['Link', 'Unlink'],
                         insert: ['Table'],
                         styles: ['Styles'],
                         code: ['Source']
                     },
-                    plugins = ['justify', 'format', 'sourcearea', 'link', 'table', 'pastefromword', 'autogrow'],
+                    plugins = ['justify', 'format', 'sourcearea', 'link', 'table', 'autogrow'],
                     icons = {
                         Format: 'font',
                         Strike: 'strikethrough',
@@ -47131,7 +47198,6 @@ define('__component__$url-input@husky',['services/husky/url-validator'], functio
                         JustifyBlock: 'align-justify',
                         NumberedList: 'list-ol',
                         BulletedList: 'list',
-                        PasteFromWord: 'file-word-o',
                         Styles: 'header',
                         Source: 'code'
                     };
@@ -47203,22 +47269,22 @@ define('__component__$url-input@husky',['services/husky/url-validator'], functio
                             // check if the definition is from the dialog we're
                             // interested in (the "Link" dialog).
                             if (dialogName == 'link') {
-                                    // get a reference to the "Link Info" and "Target" tab.
+                                // get a reference to the "Link Info" and "Target" tab.
                                 var infoTab = dialogDefinition.getContents('info'),
                                     targetTab = dialogDefinition.getContents('target'),
 
-                                    // get a reference to the link type
+                                // get a reference to the link type
                                     linkOptions = infoTab.get('linkType'),
                                     targetOptions = targetTab.get('linkTargetType'),
 
-                                    // list of included link options
+                                // list of included link options
                                     includedLinkOptions = [
                                         'url',
                                         'email'
                                     ],
                                     selectedLinkOption = [],
 
-                                    // list of included link target options
+                                // list of included link target options
                                     includedTargetOptions = [
                                         'notSet',
                                         '_blank',
@@ -47255,7 +47321,13 @@ define('__component__$url-input@husky',['services/husky/url-validator'], functio
                             return instance;
                         }
                     }
-                };
+                }   ;
+
+                app.sandbox.ckeditor.addPlugin(
+                    'huskyPasteFromWord',
+                    new PasteFromWordPlugin(app.sandboxes.create('plugin-paste-from-word'))
+                );
+                app.sandbox.ckeditor.addToolbarButton('paste', 'PasteFromWord', 'paste');
             }
 
         };
