@@ -735,7 +735,6 @@
                 this.$loader = null;
                 this.$mediumLoader = null;
                 this.isLoading = false;
-                this.initialLoaded = false;
 
                 // append datagrid to html element
                 this.$element = this.sandbox.dom.$('<div class="husky-datagrid"/>');
@@ -751,6 +750,8 @@
                 this.bindCustomEvents(); // Should only be be called once
                 this.bindDOMEvents();
                 this.renderMediumLoader();
+                // merge dom-selected and option-preselected items
+                this.preSelectItems();
 
                 this.loadAndInitializeDecorators().then(function() {
                     if (this.options.selectedCounter === true) {
@@ -777,11 +778,12 @@
                 if (!!this.options.url) {
                     url = this.options.url;
 
-                    this.sandbox.logger.log('load data from url');
                     if (this.requestFields.length > 0) {
                         url += (url.indexOf('?') === -1) ? '?' : '&';
                         url += 'fields=' + this.requestFields.join(',');
                     }
+
+                    this.sandbox.logger.log('load data from url');
 
                     this.loading();
                     this.load({
@@ -901,10 +903,6 @@
              * Renders the data of the datagrid
              */
             render: function() {
-                if (!this.initialLoaded) {
-                    this.preSelectItems();
-                    this.initialLoaded = true;
-                }
                 this.renderView();
                 if (!!this.paginations[this.paginationId]) {
                     this.paginations[this.paginationId].render(this.data, this.$element);
@@ -1005,6 +1003,11 @@
              */
             load: function(params) {
                 this.currentUrl = this.getUrl(params);
+
+                var delimiter = (this.currentUrl.indexOf('?') === -1) ? '?' : "&",
+                    selectedString = this.getSelectedItemIds.join(',');
+                this.currentUrl = this.currentUrl + delimiter + 'expand=' + selectedString;
+
                 this.sandbox.dom.addClass(this.$find('.selected-elements'), 'invisible');
                 return this.sandbox.util.load(this.currentUrl, params.data)
                     .then(function(response) {
